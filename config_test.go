@@ -1,0 +1,248 @@
+package xlogger
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap/zapcore"
+)
+
+// TestLogFormat tests the LogFormat type
+func TestLogFormat(t *testing.T) {
+	t.Run("String should return format string", func(t *testing.T) {
+		assert.Equal(t, "json", FormatJSON.String())
+		assert.Equal(t, "text", FormatText.String())
+	})
+
+	t.Run("IsValid should validate format", func(t *testing.T) {
+		assert.True(t, FormatJSON.IsValid())
+		assert.True(t, FormatText.IsValid())
+		assert.True(t, LogFormat("JSON").IsValid())
+		assert.True(t, LogFormat("TEXT").IsValid())
+		assert.False(t, LogFormat("invalid").IsValid())
+		assert.False(t, LogFormat("").IsValid())
+	})
+
+	t.Run("Normalize should return lowercase format", func(t *testing.T) {
+		assert.Equal(t, FormatJSON, LogFormat("JSON").Normalize())
+		assert.Equal(t, FormatJSON, LogFormat("Json").Normalize())
+		assert.Equal(t, FormatText, LogFormat("TEXT").Normalize())
+		assert.Equal(t, FormatText, LogFormat("Text").Normalize())
+	})
+}
+
+// TestDefaultLoggerConfig tests the DefaultLoggerConfig function
+func TestDefaultLoggerConfig(t *testing.T) {
+	t.Run("should return default configuration", func(t *testing.T) {
+		cfg := DefaultLoggerConfig()
+
+		assert.NotNil(t, cfg)
+		assert.Equal(t, zapcore.InfoLevel, cfg.Level)
+		assert.Equal(t, FormatJSON, cfg.Format)
+		assert.False(t, cfg.Development)
+		assert.False(t, cfg.DisableCaller)
+		assert.True(t, cfg.DisableStacktrace)
+		assert.Empty(t, cfg.TimeFormat)
+		assert.Equal(t, 1, cfg.CallerSkip)
+	})
+}
+
+// TestNewLoggerConfig tests the NewLoggerConfig function
+func TestNewLoggerConfig(t *testing.T) {
+	t.Run("should handle nil config", func(t *testing.T) {
+		cfg := NewLoggerConfig(nil)
+
+		assert.NotNil(t, cfg)
+		// Should return default config
+		expected := DefaultLoggerConfig()
+		assert.Equal(t, expected.Level, cfg.Level)
+		assert.Equal(t, expected.Format, cfg.Format)
+		assert.Equal(t, expected.Development, cfg.Development)
+		assert.Equal(t, expected.DisableCaller, cfg.DisableCaller)
+		assert.Equal(t, expected.DisableStacktrace, cfg.DisableStacktrace)
+	})
+
+	t.Run("should apply development mode settings", func(t *testing.T) {
+		inputCfg := &Config{
+			Level:       zapcore.InfoLevel,
+			Format:      FormatJSON,
+			Development: true,
+		}
+
+		cfg := NewLoggerConfig(inputCfg)
+
+		assert.NotNil(t, cfg)
+		assert.True(t, cfg.Development)
+		assert.Equal(t, zapcore.InfoLevel, cfg.Level)
+		assert.Equal(t, FormatJSON, cfg.Format)
+	})
+
+	t.Run("should apply debug-specific settings", func(t *testing.T) {
+		inputCfg := &Config{
+			Level:       zapcore.DebugLevel,
+			Format:      FormatText,
+			Development: true,
+		}
+
+		cfg := NewLoggerConfig(inputCfg)
+
+		assert.NotNil(t, cfg)
+		assert.Equal(t, zapcore.DebugLevel, cfg.Level)
+		assert.Equal(t, FormatText, cfg.Format)
+		assert.False(t, cfg.DisableStacktrace) // Should enable stacktrace in debug mode
+	})
+
+	t.Run("should handle different log levels", func(t *testing.T) {
+		levels := []zapcore.Level{
+			zapcore.DebugLevel,
+			zapcore.InfoLevel,
+			zapcore.WarnLevel,
+			zapcore.ErrorLevel,
+		}
+
+		for _, level := range levels {
+			inputCfg := &Config{
+				Level:  level,
+				Format: FormatJSON,
+			}
+
+			cfg := NewLoggerConfig(inputCfg)
+			assert.Equal(t, level, cfg.Level, "Failed for level: %s", level.String())
+		}
+	})
+
+	t.Run("should handle different log formats", func(t *testing.T) {
+		formats := []struct {
+			inputFormat    LogFormat
+			expectedFormat LogFormat
+		}{
+			{FormatJSON, FormatJSON},
+			{FormatText, FormatText},
+			{LogFormat("JSON"), FormatJSON},
+			{LogFormat("TEXT"), FormatText},
+		}
+
+		for _, format := range formats {
+			inputCfg := &Config{
+				Level:  zapcore.InfoLevel,
+				Format: format.inputFormat,
+			}
+
+			cfg := NewLoggerConfig(inputCfg)
+			assert.Equal(t, format.expectedFormat, cfg.Format, "Failed for format: %s", format.inputFormat)
+		}
+	})
+
+	t.Run("should preserve custom settings", func(t *testing.T) {
+		inputCfg := &Config{
+			Level:             zapcore.WarnLevel,
+			Format:            FormatText,
+			Development:       true,
+			DisableCaller:     true,
+			DisableStacktrace: true,
+			TimeFormat:        "2006-01-02",
+			CallerSkip:        2,
+		}
+
+		cfg := NewLoggerConfig(inputCfg)
+
+		assert.NotNil(t, cfg)
+		assert.Equal(t, zapcore.WarnLevel, cfg.Level)
+		assert.Equal(t, FormatText, cfg.Format)
+		assert.True(t, cfg.Development)
+		assert.True(t, cfg.DisableCaller)
+		assert.True(t, cfg.DisableStacktrace)
+		assert.Equal(t, "2006-01-02", cfg.TimeFormat)
+		assert.Equal(t, 2, cfg.CallerSkip)
+	})
+}
+
+// TestConfigHelperMethods tests the helper methods on Config
+func TestConfigHelperMethods(t *testing.T) {
+	t.Run("GetLevel should return level string", func(t *testing.T) {
+		cfg := &Config{Level: zapcore.DebugLevel}
+		assert.Equal(t, "debug", cfg.GetLevel())
+
+		cfg.Level = zapcore.InfoLevel
+		assert.Equal(t, "info", cfg.GetLevel())
+
+		cfg.Level = zapcore.WarnLevel
+		assert.Equal(t, "warn", cfg.GetLevel())
+
+		cfg.Level = zapcore.ErrorLevel
+		assert.Equal(t, "error", cfg.GetLevel())
+	})
+
+	t.Run("GetFormat should return lowercase format string", func(t *testing.T) {
+		cfg := &Config{Format: FormatJSON}
+		assert.Equal(t, "json", cfg.GetFormat())
+
+		cfg.Format = FormatText
+		assert.Equal(t, "text", cfg.GetFormat())
+
+		cfg.Format = LogFormat("JSON")
+		assert.Equal(t, "json", cfg.GetFormat())
+	})
+
+	t.Run("IsDebugLevel should return correct value", func(t *testing.T) {
+		cfg := &Config{Level: zapcore.DebugLevel}
+		assert.True(t, cfg.IsDebugLevel())
+
+		cfg.Level = zapcore.InfoLevel
+		assert.False(t, cfg.IsDebugLevel())
+	})
+
+	t.Run("IsInfoLevel should return correct value", func(t *testing.T) {
+		cfg := &Config{Level: zapcore.InfoLevel}
+		assert.True(t, cfg.IsInfoLevel())
+
+		cfg.Level = zapcore.DebugLevel
+		assert.False(t, cfg.IsInfoLevel())
+	})
+
+	t.Run("IsWarnLevel should return correct value", func(t *testing.T) {
+		cfg := &Config{Level: zapcore.WarnLevel}
+		assert.True(t, cfg.IsWarnLevel())
+
+		cfg.Level = zapcore.InfoLevel
+		assert.False(t, cfg.IsWarnLevel())
+	})
+
+	t.Run("IsErrorLevel should return correct value", func(t *testing.T) {
+		cfg := &Config{Level: zapcore.ErrorLevel}
+		assert.True(t, cfg.IsErrorLevel())
+
+		cfg.Level = zapcore.InfoLevel
+		assert.False(t, cfg.IsErrorLevel())
+	})
+
+	t.Run("IsJSONFormat should return correct value", func(t *testing.T) {
+		cfg := &Config{Format: FormatJSON}
+		assert.True(t, cfg.IsJSONFormat())
+
+		cfg.Format = LogFormat("JSON")
+		assert.True(t, cfg.IsJSONFormat())
+
+		cfg.Format = FormatText
+		assert.False(t, cfg.IsJSONFormat())
+	})
+
+	t.Run("IsTextFormat should return correct value", func(t *testing.T) {
+		cfg := &Config{Format: FormatText}
+		assert.True(t, cfg.IsTextFormat())
+
+		cfg.Format = LogFormat("TEXT")
+		assert.True(t, cfg.IsTextFormat())
+
+		cfg.Format = FormatJSON
+		assert.False(t, cfg.IsTextFormat())
+	})
+
+	t.Run("IsDevelopment should return correct value", func(t *testing.T) {
+		cfg := &Config{Development: true}
+		assert.True(t, cfg.IsDevelopment())
+
+		cfg.Development = false
+		assert.False(t, cfg.IsDevelopment())
+	})
+}
