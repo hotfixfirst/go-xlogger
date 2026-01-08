@@ -15,9 +15,11 @@ When creating or modifying this Go SDK, follow this structure:
 │       └── README.md             # Example documentation
 ├── {feature}.go                  # Implementation
 ├── {feature}_test.go             # Unit tests (required)
+├── .gitignore
 ├── go.mod
 ├── go.sum
 ├── LICENSE
+├── Makefile                      # Build and development commands
 └── README.md                     # Main documentation
 ```
 
@@ -46,6 +48,63 @@ When adding new feature, update:
 - [ ] Root `README.md` - Add to packages table and create section
 - [ ] `_examples/README.md` - Add to table of contents
 
+## Markdown Style
+
+Follow these rules to avoid markdown linting warnings:
+
+### Table Separators
+Use spaces around pipes in separator rows:
+
+```markdown
+<!-- ✅ Good -->
+| Column 1 | Column 2 |
+| -------- | -------- |
+| value    | value    |
+
+<!-- ❌ Bad -->
+| Column 1 | Column 2 |
+|----------|----------|
+| value    | value    |
+```
+
+### Code Block Language
+Always specify language for fenced code blocks:
+
+```markdown
+<!-- ✅ Good -->
+```text
+Sample output here
+```
+
+<!-- ❌ Bad -->
+```
+Sample output here
+```
+```
+
+### Headings
+- Use unique heading names (no duplicates)
+- Add blank line before and after headings
+
+### Lists
+- Add blank line before and after lists
+
+```markdown
+<!-- ✅ Good -->
+### Section
+
+- Item 1
+- Item 2
+
+### Next Section
+
+<!-- ❌ Bad -->
+### Section
+- Item 1
+- Item 2
+### Next Section
+```
+
 ## Code Style
 
 ### Package Declaration
@@ -56,7 +115,7 @@ package {packagename}
 
 **Example:**
 ```go
-// Package xlogger provides utilities for logging.
+// Package xlogger provides advanced logging functionalities.
 package xlogger
 ```
 
@@ -204,6 +263,12 @@ go run main.go
 go get github.com/{org}/{project}
 ```
 
+Or with a specific version:
+
+```bash
+go get github.com/{org}/{project}@v1.0.0
+```
+
 ## Quick Start
 
 ```go
@@ -279,10 +344,121 @@ When adding a new feature example:
 4. Update this file's table of contents
 ````
 
+## Makefile
+
+Every Go SDK project should have a Makefile with standard targets.
+
+### Required Targets
+
+```makefile
+.PHONY: help test test-coverage test-race lint fmt vet build clean \
+        example-basic example-chaining example-wrapping example-all
+
+.DEFAULT_GOAL := help
+
+# Go parameters
+GOCMD=go
+GOTEST=$(GOCMD) test
+GOVET=$(GOCMD) vet
+GOFMT=$(GOCMD) fmt
+GOBUILD=$(GOCMD) build
+GORUN=$(GOCMD) run
+
+# Coverage
+COVERAGE_FILE=coverage.out
+COVERAGE_HTML=coverage.html
+
+## help: Show this help message
+help:
+	@echo "Usage: make [target]"
+	@echo ""
+	@echo "Targets:"
+	@sed -n 's/^##//p' $(MAKEFILE_LIST) | column -t -s ':' | sed -e 's/^/ /'
+
+## test: Run all tests
+test:
+	$(GOTEST) -v ./...
+
+## test-coverage: Run tests with coverage report
+test-coverage:
+	$(GOTEST) -v -coverprofile=$(COVERAGE_FILE) ./...
+	$(GOCMD) tool cover -func=$(COVERAGE_FILE)
+
+## test-coverage-html: Run tests and generate HTML coverage report
+test-coverage-html: test-coverage
+	$(GOCMD) tool cover -html=$(COVERAGE_FILE) -o $(COVERAGE_HTML)
+	@echo "Coverage report generated: $(COVERAGE_HTML)"
+
+## test-race: Run tests with race detector
+test-race:
+	$(GOTEST) -v -race ./...
+
+## lint: Run golangci-lint (requires golangci-lint installed)
+lint:
+	@which golangci-lint > /dev/null || (echo "golangci-lint not installed. Run: brew install golangci-lint" && exit 1)
+	golangci-lint run ./...
+
+## fmt: Format code
+fmt:
+	$(GOFMT) ./...
+
+## vet: Run go vet
+vet:
+	$(GOVET) ./...
+
+## build: Build the package
+build:
+	$(GOBUILD) ./...
+
+## check: Run fmt, vet, and test
+check: fmt vet test
+
+## ci: Run all CI checks (fmt, vet, lint, test with race)
+ci: fmt vet lint test-race
+
+## clean: Remove generated files
+clean:
+	rm -f $(COVERAGE_FILE) $(COVERAGE_HTML)
+	$(GOCMD) clean -cache -testcache
+```
+
+### Example Targets
+
+When adding new examples, add corresponding make targets:
+
+```makefile
+## example-{feature}: Run {feature} example
+example-{feature}:
+	@echo "=== Running {Feature} Example ==="
+	$(GORUN) ./_examples/{feature}/main.go
+
+## example-all: Run all examples
+example-all: example-{feature1} example-{feature2}
+```
+
+### Standard Targets Reference
+
+| Target | Description |
+| ------ | ----------- |
+| `help` | Show available commands |
+| `test` | Run all tests |
+| `test-coverage` | Run tests with coverage report |
+| `test-coverage-html` | Generate HTML coverage report |
+| `test-race` | Run tests with race detector |
+| `lint` | Run golangci-lint |
+| `fmt` | Format code |
+| `vet` | Run go vet |
+| `build` | Build the package |
+| `check` | Run fmt, vet, and test |
+| `ci` | Run all CI checks |
+| `clean` | Remove generated files |
+| `example-{name}` | Run specific example |
+| `example-all` | Run all examples |
+
 ## Placeholders Reference
 
 | Placeholder | Description | Example |
-|-------------|-------------|---------|
+| ----------- | ----------- | ------- |
 | `{project}` | Project/repo name | `go-xlogger` |
 | `{package}` | Go package name | `xlogger` |
 | `{packagename}` | Package name in code | `xlogger` |
@@ -290,3 +466,49 @@ When adding a new feature example:
 | `{feature}` | Feature name (lowercase) | `duration` |
 | `{Feature}` | Feature name (Title Case) | `Duration` |
 | `{FunctionName}` | Function name | `ParseDurationToSeconds` |
+
+## Code Generation Rules
+
+### Creating New Files vs Editing Existing Files
+
+**Creating new files** - Do NOT use `// ...existing code...` or similar markers:
+
+```go
+// ✅ Good - Complete file content
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello")
+}
+```
+
+```go
+// ❌ Bad - Using existing code marker in new file
+// ...existing code...
+func main() {
+    fmt.Println("Hello")
+}
+```
+
+**Editing existing files** - Use context to show where changes go:
+
+```go
+// ✅ Good - Show surrounding context
+func existingFunction() {
+    // existing code
+}
+
+func newFunction() {
+    // new code here
+}
+```
+
+### Summary
+
+| Scenario | Use `// ...existing code...` |
+| -------- | ---------------------------- |
+| Creating new file | ❌ Never use |
+| Editing existing file | ⚠️ Avoid, use actual context instead |
+| Showing code examples | ✅ OK for documentation |
