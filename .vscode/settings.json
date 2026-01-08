@@ -1,6 +1,9 @@
 {
     "cSpell.words": [
+        "GORM",
         "hotfixfirst",
-        "xlogger"
+        "Println",
+        "xlogger",
+        "zapcore"
     ]
 }
