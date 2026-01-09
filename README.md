@@ -85,7 +85,19 @@ type Config struct {
 | Function | Description |
 | -------- | ----------- |
 | `DefaultLoggerConfig()` | Returns default config (INFO, JSON) |
-| `NewLoggerConfig(cfg)` | Creates config with custom settings |
+| `NewLoggerConfig(opts...)` | Creates config with functional options |
+
+### Option Functions
+
+| Function | Description |
+| -------- | ----------- |
+| `WithLevel(level)` | Set log level |
+| `WithFormat(format)` | Set output format (JSON/Text) |
+| `WithDevelopment(bool)` | Enable development mode |
+| `WithDisableCaller(bool)` | Disable caller info |
+| `WithDisableStacktrace(bool)` | Disable stacktrace |
+| `WithTimeFormat(format)` | Set time format |
+| `WithCallerSkip(skip)` | Set caller skip frames |
 
 ### Config Example
 
@@ -93,12 +105,12 @@ type Config struct {
 // Default config
 cfg := xlogger.DefaultLoggerConfig()
 
-// Custom config
-cfg := xlogger.NewLoggerConfig(&xlogger.Config{
-    Level:       zapcore.DebugLevel,
-    Format:      xlogger.FormatText,
-    Development: true,
-})
+// Custom config with functional options
+cfg := xlogger.NewLoggerConfig(
+    xlogger.WithLevel(zapcore.DebugLevel),
+    xlogger.WithFormat(xlogger.FormatText),
+    xlogger.WithDevelopment(true),
+)
 ```
 
 ## Logger

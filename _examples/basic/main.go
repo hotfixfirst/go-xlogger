@@ -25,15 +25,15 @@ func main() {
 	defaultLogger.Info("Application started with default config")
 	defaultLogger.Info("User logged in", xlogger.String("user_id", "12345"))
 
-	// 2. Using custom config with text format
+	// 2. Using custom config with functional options
 	fmt.Println()
 	fmt.Println("2. Custom Config (Text format, DEBUG level)")
 	fmt.Println("--------------------------------------------")
-	cfg := xlogger.NewLoggerConfig(&xlogger.Config{
-		Level:       zapcore.DebugLevel,
-		Format:      xlogger.FormatText,
-		Development: true,
-	})
+	cfg := xlogger.NewLoggerConfig(
+		xlogger.WithLevel(zapcore.DebugLevel),
+		xlogger.WithFormat(xlogger.FormatText),
+		xlogger.WithDevelopment(true),
+	)
 
 	textLogger, err := xlogger.NewZapLogger(cfg)
 	if err != nil {

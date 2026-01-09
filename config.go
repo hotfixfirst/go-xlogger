@@ -70,41 +70,23 @@ func DefaultLoggerConfig() *Config {
 	}
 }
 
-// NewLoggerConfig creates logger configuration with custom settings.
-// Falls back to DefaultLoggerConfig for nil input.
+// NewLoggerConfig creates logger configuration with functional options.
+// Starts with DefaultLoggerConfig and applies each option in order.
 //
 // Example:
 //
-//	cfg := xlogger.NewLoggerConfig(&xlogger.Config{
-//	    Level:       zapcore.DebugLevel,
-//	    Format:      xlogger.FormatText,
-//	    Development: true,
-//	})
+//	cfg := xlogger.NewLoggerConfig(
+//	    xlogger.WithLevel(zapcore.DebugLevel),
+//	    xlogger.WithFormat(xlogger.FormatText),
+//	    xlogger.WithDevelopment(true),
+//	)
 //	logger, err := xlogger.NewZapLogger(cfg)
-func NewLoggerConfig(cfg *Config) *Config {
-	if cfg == nil {
-		return DefaultLoggerConfig()
+func NewLoggerConfig(opts ...Option) *Config {
+	cfg := DefaultLoggerConfig()
+	for _, opt := range opts {
+		opt(cfg)
 	}
-
-	loggerCfg := DefaultLoggerConfig()
-
-	loggerCfg.Level = cfg.Level
-	loggerCfg.Development = cfg.Development
-	loggerCfg.DisableCaller = cfg.DisableCaller
-	loggerCfg.TimeFormat = cfg.TimeFormat
-	loggerCfg.CallerSkip = cfg.CallerSkip
-
-	if cfg.Format.IsValid() {
-		loggerCfg.Format = cfg.Format.Normalize()
-	}
-
-	if cfg.IsDebugLevel() {
-		loggerCfg.DisableStacktrace = false
-	} else {
-		loggerCfg.DisableStacktrace = cfg.DisableStacktrace
-	}
-
-	return loggerCfg
+	return cfg
 }
 
 // GetLevel returns the log level as string.
@@ -150,4 +132,104 @@ func (c *Config) IsTextFormat() bool {
 // IsDevelopment returns true if development mode is enabled.
 func (c *Config) IsDevelopment() bool {
 	return c.Development
+}
+
+// Option is a function that modifies Config.
+type Option func(*Config)
+
+// WithLevel sets the log level.
+//
+// Example:
+//
+//	cfg := xlogger.NewLoggerConfig(
+//	    xlogger.WithLevel(zapcore.DebugLevel),
+//	)
+func WithLevel(level zapcore.Level) Option {
+	return func(c *Config) {
+		c.Level = level
+		// Auto-enable stacktrace for debug level
+		if level == zapcore.DebugLevel {
+			c.DisableStacktrace = false
+		}
+	}
+}
+
+// WithFormat sets the log format.
+//
+// Example:
+//
+//	cfg := xlogger.NewLoggerConfig(
+//	    xlogger.WithFormat(xlogger.FormatText),
+//	)
+func WithFormat(format LogFormat) Option {
+	return func(c *Config) {
+		if format.IsValid() {
+			c.Format = format.Normalize()
+		}
+	}
+}
+
+// WithDevelopment enables or disables development mode.
+//
+// Example:
+//
+//	cfg := xlogger.NewLoggerConfig(
+//	    xlogger.WithDevelopment(true),
+//	)
+func WithDevelopment(dev bool) Option {
+	return func(c *Config) {
+		c.Development = dev
+	}
+}
+
+// WithDisableCaller disables caller information.
+//
+// Example:
+//
+//	cfg := xlogger.NewLoggerConfig(
+//	    xlogger.WithDisableCaller(true),
+//	)
+func WithDisableCaller(disable bool) Option {
+	return func(c *Config) {
+		c.DisableCaller = disable
+	}
+}
+
+// WithDisableStacktrace disables stacktrace in errors.
+//
+// Example:
+//
+//	cfg := xlogger.NewLoggerConfig(
+//	    xlogger.WithDisableStacktrace(false),
+//	)
+func WithDisableStacktrace(disable bool) Option {
+	return func(c *Config) {
+		c.DisableStacktrace = disable
+	}
+}
+
+// WithTimeFormat sets the time format.
+//
+// Example:
+//
+//	cfg := xlogger.NewLoggerConfig(
+//	    xlogger.WithTimeFormat("2006-01-02 15:04:05"),
+//	)
+func WithTimeFormat(format string) Option {
+	return func(c *Config) {
+		c.TimeFormat = format
+	}
+}
+
+// WithCallerSkip sets the number of caller frames to skip.
+//
+// Example:
+//
+//	cfg := xlogger.NewLoggerConfig(
+//	    xlogger.WithCallerSkip(2),
+//	)
+func WithCallerSkip(skip int) Option {
+	return func(c *Config) {
+		c.CallerSkip = skip
+	}
 }
