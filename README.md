@@ -91,7 +91,8 @@ type Config struct {
 
 | Function | Description |
 | -------- | ----------- |
-| `WithLevel(level)` | Set log level |
+| `WithLevel(level)` | Set log level (zapcore.Level) |
+| `WithLevelString(level)` | Set log level from string ("debug", "info", etc.) |
 | `WithFormat(format)` | Set output format (JSON/Text) |
 | `WithDevelopment(bool)` | Enable development mode |
 | `WithDisableCaller(bool)` | Disable caller info |

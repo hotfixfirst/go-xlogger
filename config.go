@@ -154,6 +154,26 @@ func WithLevel(level zapcore.Level) Option {
 	}
 }
 
+// WithLevelString sets the log level from string.
+// Supported values: "debug", "info", "warn", "error", "dpanic", "panic", "fatal"
+// Invalid values are ignored and the default level (INFO) is used.
+//
+// Example:
+//
+//	cfg := xlogger.NewLoggerConfig(
+//	    xlogger.WithLevelString("debug"),
+//	)
+func WithLevelString(level string) Option {
+	return func(c *Config) {
+		if parsed, err := zapcore.ParseLevel(level); err == nil {
+			c.Level = parsed
+			if parsed == zapcore.DebugLevel {
+				c.DisableStacktrace = false
+			}
+		}
+	}
+}
+
 // WithFormat sets the log format.
 //
 // Example:

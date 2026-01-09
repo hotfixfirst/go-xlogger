@@ -143,6 +143,45 @@ func TestWithLevel(t *testing.T) {
 	})
 }
 
+// TestWithLevelString tests the WithLevelString option
+func TestWithLevelString(t *testing.T) {
+	t.Run("should set log level from string", func(t *testing.T) {
+		tests := []struct {
+			input    string
+			expected zapcore.Level
+		}{
+			{"debug", zapcore.DebugLevel},
+			{"DEBUG", zapcore.DebugLevel},
+			{"info", zapcore.InfoLevel},
+			{"INFO", zapcore.InfoLevel},
+			{"warn", zapcore.WarnLevel},
+			{"WARN", zapcore.WarnLevel},
+			{"error", zapcore.ErrorLevel},
+			{"ERROR", zapcore.ErrorLevel},
+		}
+
+		for _, tt := range tests {
+			cfg := NewLoggerConfig(WithLevelString(tt.input))
+			assert.Equal(t, tt.expected, cfg.Level, "Failed for input: %s", tt.input)
+		}
+	})
+
+	t.Run("should auto-enable stacktrace for debug level string", func(t *testing.T) {
+		cfg := NewLoggerConfig(WithLevelString("debug"))
+		assert.False(t, cfg.DisableStacktrace)
+	})
+
+	t.Run("should ignore invalid level string", func(t *testing.T) {
+		cfg := NewLoggerConfig(WithLevelString("invalid"))
+		assert.Equal(t, zapcore.InfoLevel, cfg.Level) // Should keep default
+	})
+
+	t.Run("should ignore empty level string", func(t *testing.T) {
+		cfg := NewLoggerConfig(WithLevelString(""))
+		assert.Equal(t, zapcore.InfoLevel, cfg.Level) // Should keep default
+	})
+}
+
 // TestWithFormat tests the WithFormat option
 func TestWithFormat(t *testing.T) {
 	t.Run("should set log format", func(t *testing.T) {
